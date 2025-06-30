@@ -189,7 +189,7 @@ def enviar_email_mais_baratos(resultados, n=3):
             <td style="text-align: center;">{item['Posição']}</td>
             <td style="text-align: center;">{item['Possui 1/43']}</td>
             <td>{item['Título']}</td>
-            <td>{item['Preço'].replace('\n', ' ')}</td>
+            <td>{item['Preço'].replace('\\n', ' ')}</td>
             <td><a href="{item['Link']}">🔗 Ver Produto</a></td>
         </tr>
         """
