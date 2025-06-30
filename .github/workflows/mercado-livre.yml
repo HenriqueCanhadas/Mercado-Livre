@@ -39,4 +39,6 @@ jobs:
         env:
           EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
         run: |
-          xvfb-run python Alerta Mercado Livre.py
+          set -x
+          ls -la
+          xvfb-run python alerta_mercado_livre.py
