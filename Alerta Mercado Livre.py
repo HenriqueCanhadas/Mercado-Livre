@@ -30,16 +30,24 @@ NUMERO_ITENS_BARATOS = 3
 
 # === CONFIGURAR CHROME COM PERFIL ===
 
-PROFILE_PATH = r"user-data-dir=C:\Users\c0ntr\Documents\Github\Mercado-Livre\ChromeProfile"
-chrome_options = Options()
-chrome_options.add_argument(PROFILE_PATH)
+#PROFILE_PATH = r"user-data-dir=C:\Users\c0ntr\Documents\Github\Mercado-Livre\ChromeProfile"
+#chrome_options = Options()
+#chrome_options.add_argument(PROFILE_PATH)
 #chrome_options.add_argument("--headless=new")
-chrome_options.add_experimental_option("prefs", {
-    "download.prompt_for_download": False,
-    "download.directory_upgrade": True,
-    "safebrowsing.enabled": True
-})
+#chrome_options.add_experimental_option("prefs", {
+#    "download.prompt_for_download": False,
+#    "download.directory_upgrade": True,
+#    "safebrowsing.enabled": True
+#})
+#driver = webdriver.Chrome(options=chrome_options)
+
+chrome_options = Options()
+chrome_options.add_argument("--headless=new")
+chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-dev-shm-usage")
 driver = webdriver.Chrome(options=chrome_options)
+
+
 wait = WebDriverWait(driver, 20)
 
 # === ACESSAR SITE DO MERCADO LIVRE ===
