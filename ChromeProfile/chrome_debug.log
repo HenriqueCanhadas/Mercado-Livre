@@ -1,0 +1,9 @@
+[6556:13180:0630/160039.421:INFO:components\enterprise\browser\controller\chrome_browser_cloud_management_controller.cc:202] No machine level policy manager exists.
+[5068:2856:0630/160039.625:WARNING:ui\gl\direct_composition_support.cc:1167] QueryInterface to IDCompositionDevice4 failed: Não há suporte para esta interface (0x80004002)
+[6556:13180:0630/160042.308:INFO:CONSOLE:3245] "[ScheduledEventEmitter]: Could not restore stored schedules.", source: chrome-extension://gighmmpiobklfepjocnamgkkbiglidom/abp-background.js (3245)
+[6556:13180:0630/160047.782:INFO:CONSOLE:33109] "[Telemetry]: Ping time too early, not pinging.", source: chrome-extension://gighmmpiobklfepjocnamgkkbiglidom/abp-background.js (33109)
+[6556:13180:0630/160048.199:INFO:CONSOLE:87820] "Snippets are not initialized. Use `setSnippetLibrary()` to initialize snippets.", source: chrome-extension://gighmmpiobklfepjocnamgkkbiglidom/abp-background.js (87820)
+[6556:13180:0630/160048.419:INFO:CONSOLE:87820] "Snippets are not initialized. Use `setSnippetLibrary()` to initialize snippets.", source: chrome-extension://gighmmpiobklfepjocnamgkkbiglidom/abp-background.js (87820)
+[6556:13180:0630/160048.506:INFO:CONSOLE:87820] "Snippets are not initialized. Use `setSnippetLibrary()` to initialize snippets.", source: chrome-extension://gighmmpiobklfepjocnamgkkbiglidom/abp-background.js (87820)
+[5268:13228:0630/160058.238:WARNING:net\extras\sqlite\sqlite_persistent_store_backend_base.cc:176] Failed to post task from FlushAndNotifyInBackground@net\extras\sqlite\sqlite_persistent_store_backend_base.cc:226 to client_task_runner_.
+[5268:13228:0630/160058.238:WARNING:net\extras\sqlite\sqlite_persistent_store_backend_base.cc:176] Failed to post task from FlushAndNotifyInBackground@net\extras\sqlite\sqlite_persistent_store_backend_base.cc:226 to client_task_runner_.
