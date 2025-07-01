@@ -2,7 +2,7 @@ name: Monitorar Miniaturas F1
 
 on:
   schedule:
-    - cron: '0 17 * * *'  # 17h UTC = 14h horário de Brasília
+    - cron: '40 11 * * *'  # 11:40 UTC = 08:40 horário de Brasília
   workflow_dispatch:
 
 jobs:
