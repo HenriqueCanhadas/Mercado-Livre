@@ -182,7 +182,7 @@ def enviar_email_mais_baratos(resultados, n=3):
             </thead>
             <tbody>
     """
-
+    
     for item in mais_baratos:
         preco_formatado = item['Preço'].replace('\n', ' ')
     
