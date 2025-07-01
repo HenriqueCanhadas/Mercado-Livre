@@ -3,7 +3,7 @@ name: Monitorar Miniaturas F1
 on:
   schedule:
     - cron: '0 12 * * *'  # 12h UTC = 9h horário de Brasília
-  workflow_dispatch:      # permite executar manualmente
+  workflow_dispatch:
 
 jobs:
   run-script:
@@ -23,13 +23,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Instalar Chrome e ChromeDriver compatíveis
+      - name: Instalar Chrome e ChromeDriver corretos
         uses: browser-actions/setup-chrome@v1
 
-      - name: Rodar o script com xvfb
+      - name: Instalar xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Rodar script
         env:
           EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb
-          xvfb-run python alerta_mercado_livre.py
+        run: xvfb-run python alerta_mercado_livre.py
