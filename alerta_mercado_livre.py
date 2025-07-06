@@ -28,25 +28,16 @@ exclusoes_id_link = [
 
 NUMERO_ITENS_BARATOS = 3
 
-# === CONFIGURAR CHROME COM PERFIL ===
-
-#PROFILE_PATH = r"user-data-dir=C:\Users\c0ntr\Documents\Github\Mercado-Livre\ChromeProfile"
-#chrome_options = Options()
-#chrome_options.add_argument(PROFILE_PATH)
-#chrome_options.add_argument("--headless=new")
-#chrome_options.add_experimental_option("prefs", {
-#    "download.prompt_for_download": False,
-#    "download.directory_upgrade": True,
-#    "safebrowsing.enabled": True
-#})
-#driver = webdriver.Chrome(options=chrome_options)
+# === CONFIGURAR CHROME ===
 
 chrome_options = Options()
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument(
+    "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+)
 driver = webdriver.Chrome(options=chrome_options)
-
 
 wait = WebDriverWait(driver, 20)
 
@@ -153,9 +144,6 @@ def exibir_mais_baratos(resultados, n=1):
         print("\nNenhum item com preço válido foi encontrado.")
 
 def enviar_email_mais_baratos(resultados, n=3):
-    import smtplib
-    from email.message import EmailMessage
-
     email_remetente = 'pedrosacanhadas@gmail.com'
     senha_app = os.getenv('EMAIL_SENHA_APP')
     destinatarios = ['pedrosacanhadas@gmail.com']
@@ -164,7 +152,6 @@ def enviar_email_mais_baratos(resultados, n=3):
     itens_ordenados = sorted(itens_validos, key=lambda x: extrair_valor_em_reais(x['Preço']))
     mais_baratos = itens_ordenados[:n]
 
-    # Monta o corpo do e-mail em HTML
     html = f"""
     <html>
     <body>
@@ -182,10 +169,9 @@ def enviar_email_mais_baratos(resultados, n=3):
             </thead>
             <tbody>
     """
-    
+
     for item in mais_baratos:
         preco_formatado = item['Preço'].replace('\n', ' ')
-    
         html += f"""
         <tr>
             <td style="text-align: center;">{item['Posição']}</td>
@@ -220,24 +206,25 @@ def enviar_email_mais_baratos(resultados, n=3):
     except Exception as e:
         print(f'❌ Erro ao enviar e-mail: {e}')
 
-# === AGUARDAR LISTA DE PRODUTOS ===
+# === ESPERAR ELEMENTOS ===
 
-wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="root-app"]/div/div[2]/section/div[5]/ol')))
+try:
+    wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.ui-search-layout__item")))
+except Exception:
+    print("❌ Elemento de lista de produtos não encontrado.")
+    print("🧾 HTML carregado:\n")
+    print(driver.page_source)
+    raise
 
-# === ROLAR A PÁGINA PARA CARREGAR TODOS OS ITENS ===
+# === ROLAR A PÁGINA E EXTRAIR DADOS ===
 
 rolar_pagina(driver)
-
-# === COLETAR E FILTRAR ITENS ===
-
 time.sleep(2)
 lista_xpath = '//*[@id="root-app"]/div/div[2]/section/div[5]/ol'
-lista_elementos = driver.find_elements(By.XPATH, f"{lista_xpath}/li")
+lista_elementos = driver.find_elements(By.CSS_SELECTOR, "li.ui-search-layout__item")
 total_itens = len(lista_elementos)
 
 resultados = extrair_resultados(lista_xpath, total_itens, driver)
-
-# === EXIBIR RESULTADOS FILTRADOS E MAIS BARATOS ===
 
 exibir_resultados(resultados)
 exibir_mais_baratos(resultados, NUMERO_ITENS_BARATOS)
