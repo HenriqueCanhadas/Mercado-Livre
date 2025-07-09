@@ -4,13 +4,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
+from collections import defaultdict
 import time
 import smtplib
 from email.message import EmailMessage
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
+import datetime
 
 # === CONFIGURAÇÕES DE FILTRO E RESULTADOS ===
 
@@ -26,7 +24,17 @@ exclusoes_id_link = [
     "mlb22449590",
 ]
 
-NUMERO_ITENS_BARATOS = 3
+NUMERO_ITENS_BARATOS = 5
+
+# === PADRÕES PARA CATEGORIZAÇÃO DE MINIATURAS ===
+
+padroes_preto = [
+    "apxgp", "preto", "expensity", "cor apx", "cor apxgp", "modelo apxgp"
+]
+
+padroes_vermelho = [
+    "vermelho", "automac", "app", "automaq", "maisto", "modelo vermelho"
+]
 
 # === CONFIGURAR CHROME ===
 
@@ -34,6 +42,7 @@ chrome_options = Options()
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument("--log-level=3")
 chrome_options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 )
@@ -102,12 +111,34 @@ def extrair_resultados(lista_xpath, total_itens, driver):
             except:
                 preco = preco_elem.text.strip()
 
+            # === CATEGORIZAÇÃO REFINADA ===
+            if "mc donalds" not in titulo_lower and "mcdonald" not in titulo_lower and "o filme" not in titulo_lower:
+                categoria = 'Desconhecido'
+            else:
+                is_dupla = any(p in titulo_lower for p in [
+                    "set 2un", "kit 2x", "kit c/2", "dupla", "2x miniatura", "2x miniaturas", "kit com 2", "2 unidades"
+                ])
+                is_vermelha = any(p in titulo_lower for p in padroes_vermelho)
+                is_preta = any(p in titulo_lower for p in padroes_preto)
+
+                if is_dupla:
+                    categoria = '2un'
+                elif is_vermelha and is_preta:
+                    categoria = 'Vermelha' if "vermelho" in titulo_lower else 'Preta'
+                elif is_vermelha:
+                    categoria = 'Vermelha'
+                elif is_preta:
+                    categoria = 'Preta'
+                else:
+                    categoria = 'Desconhecido'
+
             resultados.append({
                 'Título': titulo,
                 'Preço': preco,
                 'Link': link,
                 'Possui 1/43': '✅',
-                'Posição': i
+                'Posição': i,
+                'Categoria': categoria
             })
 
         except StaleElementReferenceException:
@@ -116,16 +147,34 @@ def extrair_resultados(lista_xpath, total_itens, driver):
             print(f"[Erro] Falha ao processar item {i}: {e}")
     return resultados
 
-def exibir_resultados(resultados):
-    print("\n=== RESULTADOS DOS ITENS RELEVANTES ===\n")
-    for item in resultados:
-        print(f"Item original posição: {item['Posição']}")
-        print(f"✅ 1/43: {item['Possui 1/43']}")
-        print(f"Título: {item['Título']}")
-        print(f"Preço:  {item['Preço']}")
-        print(f"Link:   {item['Link']}")
-        print("-" * 100)
-    print(f"\nTotal de itens com termos relevantes (1/43): {len(resultados)}")
+def navegar_por_paginas(driver, wait, lista_xpath):
+    todos_resultados = []
+    pagina = 1
+
+    while True:
+        print(f"\n🌐 Página {pagina}:")
+        time.sleep(2)
+        rolar_pagina(driver)
+
+        lista_elementos = driver.find_elements(By.CSS_SELECTOR, "li.ui-search-layout__item")
+        total_itens = len(lista_elementos)
+        print(f"🔎 Total de itens nesta página: {total_itens}")
+
+        resultados = extrair_resultados(lista_xpath, total_itens, driver)
+        todos_resultados.extend(resultados)
+
+        try:
+            botao_seguinte = driver.find_element(By.XPATH, "//a[@title='Seguinte']")
+            if botao_seguinte.is_enabled() and botao_seguinte.is_displayed():
+                driver.execute_script("arguments[0].click();", botao_seguinte)
+                pagina += 1
+                time.sleep(2)
+            else:
+                break
+        except NoSuchElementException:
+            break
+
+    return todos_resultados
 
 def exibir_mais_baratos(resultados, n=1):
     itens_validos = [item for item in resultados if 'R$' in item['Preço']]
@@ -135,7 +184,7 @@ def exibir_mais_baratos(resultados, n=1):
         print("\n=== PRODUTO(S) MAIS BARATO(S) ===\n")
         for item in mais_baratos:
             print(f"Item original posição: {item['Posição']}")
-            print(f"✅ 1/43: {item['Possui 1/43']}")
+            print(f"✅ 1/43: {item['Possui 1/43']} | Categoria: {item['Categoria']}")
             print(f"Título: {item['Título']}")
             print(f"Preço:  {item['Preço']}")
             print(f"Link:   {item['Link']}")
@@ -143,55 +192,188 @@ def exibir_mais_baratos(resultados, n=1):
     else:
         print("\nNenhum item com preço válido foi encontrado.")
 
-def enviar_email_mais_baratos(resultados, n=3):
+def exibir_por_categoria(resultados):
+    categorias = defaultdict(list)
+    for item in resultados:
+        categorias[item['Categoria']].append(item)
+
+    for categoria, itens in categorias.items():
+        print(f"\n=== Categoria: {categoria} - {len(itens)} Itens ===")
+        itens_ordenados = sorted(itens, key=lambda x: extrair_valor_em_reais(x['Preço']))
+        for item in itens_ordenados:
+            print(f"Posição: {item['Posição']} | Preço: {item['Preço']} | Título: {item['Título']}")
+            print(f"Link: {item['Link']}")
+            print("-" * 80)
+
+def enviar_email_mais_baratos(resultados, n=5):
+    import datetime
+    from email.message import EmailMessage
+    from collections import defaultdict
+    import smtplib
+
     email_remetente = 'pedrosacanhadas@gmail.com'
-    senha_app = os.getenv('EMAIL_SENHA_APP')
+    senha_app = 'xwxk tvei frjw lfnl'
     destinatarios = ['pedrosacanhadas@gmail.com']
 
-    itens_validos = [item for item in resultados if 'R$' in item['Preço']]
-    itens_ordenados = sorted(itens_validos, key=lambda x: extrair_valor_em_reais(x['Preço']))
-    mais_baratos = itens_ordenados[:n]
+    categorias_legenda = {
+        '2un': '🧩 Ambos',
+        'Vermelha': '🟥 Mc Donalds 🟨',
+        'Preta': '⬛ ApxGP 🟨',
+        'Desconhecido': '❓ Desconhecido'
+    }
+
+    estilos_categoria = {
+        '2un': {
+            'bg': '#eeeeee',
+            'color': '#000000',
+            'td_color': '#eeeeee',
+            'price_color': '#000000',
+            'th_bg': '#eeeeee',
+            'th_color': '#000000',
+        },
+        'Preta': {
+            'bg': '#1e1e1e',
+            'color': '#FFD700',
+            'td_color': '#000000',
+            'price_color': '#FFD700',
+            'th_bg': '#000000',
+            'th_color': '#FFD700',
+        },
+        'Vermelha': {
+            'bg': '#FF0000',
+            'color': '#FFFF00',
+            'td_color': '#FF0000',
+            'price_color': '#FFD700',
+            'th_bg': '#FF0000',
+            'th_color': '#FFFF00',
+        },
+        'Desconhecido': {
+            'bg': '#dddddd',
+            'color': '#000000',
+            'td_color': '#eeeeee',
+            'price_color': '#000000',
+            'th_bg': '#f0f0f0',
+            'th_color': '#000000',
+        }
+    }
+
+    def extrair_valor_em_reais(preco_str):
+        try:
+            return float(preco_str.replace('R$', '').replace('.', '').replace(',', '.').strip())
+        except:
+            return float('inf')
+
+    ordem_categorias = ['2un', 'Preta', 'Vermelha', 'Desconhecido']
+    data_envio = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
 
     html = f"""
     <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{
+                background-color: #f9f9f9;
+                font-family: Arial, sans-serif;
+                color: #333;
+                padding: 20px;
+            }}
+            h2 {{
+                color: #444;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }}
+            th, td {{
+                border: 1px solid #ccc;
+                padding: 8px;
+            }}
+            a {{
+                color: #1a0dab;
+                text-decoration: none;
+            }}
+            a:hover {{
+                text-decoration: underline;
+            }}
+            .rodape {{
+                font-size: 12px;
+                margin-top: 40px;
+                color: #888;
+            }}
+        </style>
+    </head>
     <body>
-        <h2>✅ Miniaturas McDonald's F1 1/43 - Itens Mais Baratos</h2>
-        <p><strong>Total de itens com termos relevantes (1/43):</strong> {len(resultados)}</p>
-        <table border="1" cellspacing="0" cellpadding="6" style="border-collapse: collapse; font-family: Arial; font-size: 14px;">
-            <thead>
-                <tr style="background-color: #f2f2f2;">
-                    <th>Posição</th>
-                    <th>1/43</th>
-                    <th>Título</th>
-                    <th>Preço</th>
-                    <th>Link</th>
-                </tr>
-            </thead>
-            <tbody>
+        <h2>✅ Relatório de Miniaturas McDonald's F1 1/43</h2>
+        <p><strong>Total de itens relevantes encontrados:</strong> {len(resultados)}</p>
     """
 
-    for item in mais_baratos:
-        preco_formatado = item['Preço'].replace('\n', ' ')
+    agrupados = defaultdict(list)
+    for item in resultados:
+        if 'R$' in item['Preço']:
+            agrupados[item['Categoria']].append(item)
+
+    for categoria in ordem_categorias:
+        itens = agrupados.get(categoria, [])
+        if not itens:
+            continue
+
+        estilo = estilos_categoria.get(categoria, {})
+        bg_color = estilo.get('bg', '#ffffff')
+        text_color = estilo.get('color', '#000000')
+        td_color = estilo.get('td_color', '#ffffff')
+        price_color = estilo.get('price_color', '#000000')
+        th_bg = estilo.get('th_bg', '#f0f0f0')
+        th_color = estilo.get('th_color', '#000000')
+
+        titulo_categoria = categorias_legenda.get(categoria, categoria)
+        itens_ordenados = sorted(itens, key=lambda x: extrair_valor_em_reais(x['Preço']))[:n]
+
         html += f"""
-        <tr>
-            <td style="text-align: center;">{item['Posição']}</td>
-            <td style="text-align: center;">{item['Possui 1/43']}</td>
-            <td>{item['Título']}</td>
-            <td>{preco_formatado}</td>
-            <td><a href="{item['Link']}">🔗 Ver Produto</a></td>
-        </tr>
+        <div class="categoria" style="background-color: {bg_color}; color: {text_color}; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); padding: 15px; margin-bottom: 25px;">
+            <h3>{titulo_categoria} - Top {len(itens_ordenados)}</h3>
+            <table>
+                <thead>
+                    <tr style="background-color: {th_bg}; color: {th_color};">
+                        <th>Posição</th>
+                        <th>1/43</th>
+                        <th>Título</th>
+                        <th>Preço</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody>
         """
 
-    html += """
-            </tbody>
-        </table>
-        <p style="margin-top:20px;">Enviado automaticamente por seu script de monitoramento. 🚀</p>
+        for item in itens_ordenados:
+            preco_formatado = item['Preço'].replace('\n', ' ')
+            html += f"""
+                    <tr style="background-color: {td_color}; color: {text_color};">
+                        <td style="text-align:center;">{item['Posição']}</td>
+                        <td style="text-align:center;">{item['Possui 1/43']}</td>
+                        <td>{item['Título']}</td>
+                        <td style="color: {price_color};">{preco_formatado}</td>
+                        <td><a href="{item['Link']}">🔗 Ver Produto</a></td>
+                    </tr>
+            """
+
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+
+    html += f"""
+        <div class="rodape">
+            Relatório gerado automaticamente em {data_envio}.<br>
+            Desenvolvido pelo seu script de monitoramento. 🚀
+        </div>
     </body>
     </html>
     """
 
     msg = EmailMessage()
-    msg['Subject'] = 'Miniaturas McDonald\'s F1 1/43 - Itens Mais Baratos'
+    msg['Subject'] = '📦 Itens Mais Baratos - Miniaturas McDonald\'s F1 1/43'
     msg['From'] = email_remetente
     msg['To'] = ', '.join(destinatarios)
 
@@ -202,30 +384,17 @@ def enviar_email_mais_baratos(resultados, n=3):
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(email_remetente, senha_app)
             smtp.send_message(msg)
-        print('✅ E-mail HTML com os itens mais baratos enviado com sucesso!')
+        print('✅ E-mail HTML com layout personalizado enviado com sucesso!')
     except Exception as e:
         print(f'❌ Erro ao enviar e-mail: {e}')
 
-# === ESPERAR ELEMENTOS ===
+# === EXECUÇÃO PRINCIPAL ===
 
-try:
-    wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.ui-search-layout__item")))
-except Exception:
-    print("❌ Elemento de lista de produtos não encontrado.")
-    print("🧾 HTML carregado:\n")
-    print(driver.page_source)
-    raise
+wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "li.ui-search-layout__item")))
 
-# === ROLAR A PÁGINA E EXTRAIR DADOS ===
-
-rolar_pagina(driver)
-time.sleep(2)
 lista_xpath = '//*[@id="root-app"]/div/div[2]/section/div[5]/ol'
-lista_elementos = driver.find_elements(By.CSS_SELECTOR, "li.ui-search-layout__item")
-total_itens = len(lista_elementos)
+resultados = navegar_por_paginas(driver, wait, lista_xpath)
 
-resultados = extrair_resultados(lista_xpath, total_itens, driver)
-
-exibir_resultados(resultados)
+exibir_por_categoria(resultados)
 exibir_mais_baratos(resultados, NUMERO_ITENS_BARATOS)
 enviar_email_mais_baratos(resultados, NUMERO_ITENS_BARATOS)
