@@ -2,7 +2,7 @@ name: Monitorar Posts
 
 on:
   schedule:
-    - cron: '45 11 * * *'  # 11:45 UTC = 08:45 Brasília
+    - cron: '30 12 * * *'  # 12:30 UTC = 09:30 horário de Brasília
   workflow_dispatch:
 
 jobs:
