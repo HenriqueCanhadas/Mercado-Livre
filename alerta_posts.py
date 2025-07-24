@@ -131,13 +131,13 @@ def verificar_elemento(busca_url, xpath_base, texto_esperado):
 verificar_elemento(
     busca_url="https://packsparapobres.com/?s=sailorscholar",
     xpath_base='//*[@id="post-172668"]/div/div/div[2]',
-    texto_esperado="Sailorscholar – Moggles"
+    texto_esperado="Sailorscholar – Moggle"
 )
 
 verificar_elemento(
     busca_url="https://packsparapobres.com/?s=Natylikespizza",
     xpath_base='//*[@id="post-171447"]/div/div/div[2]',
-    texto_esperado="Natylikespizza – Galactas"
+    texto_esperado="Natylikespizza – Galacta"
 )
 
 driver.quit()
