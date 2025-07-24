@@ -1,0 +1,35 @@
+name: Monitorar Posts
+
+on:
+  schedule:
+    - cron: '45 11 * * *'  # 11:45 UTC = 08:45 Brasília
+  workflow_dispatch:
+
+jobs:
+  verificar-elementos:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Instalar Google Chrome e ChromeDriver
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Instalar xvfb
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Rodar verificação de elementos
+        env:
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+        run: xvfb-run python verificar_elementos.py
