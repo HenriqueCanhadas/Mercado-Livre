@@ -32,4 +32,5 @@ jobs:
       - name: Rodar verificação de elementos
         env:
           EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
-        run: xvfb-run python verificar_elementos.py
+        run: xvfb-run python alerta_posts.py
+
